@@ -1,5 +1,6 @@
 <!DOCTYPE html><meta charset="utf-8">
-<title>Random image</title>
+<title>Random image viewer</title>
+
 <style>
   html,body{margin:0;height:100%;background:#000;display:flex}
   img{max-width:100%;max-height:100%;margin:auto;user-select:none}
@@ -8,21 +9,32 @@
 <img id="viewer">
 
 <script>
-const folder = 'img/';      // nazwa katalogu
-const count  = 5;          // ← podaj LICZBĘ plików!
+/* --- konfiguracja --------------------------------------------- */
+const folder = 'img/';      // katalog z obrazkami (w tym samym repo, co index.html)
+const total  = 5;           // liczba plików: 1.png … 5.png
+const ext    = '.png';      // rozszerzenie (.png lub .jpg)
+/* --------------------------------------------------------------- */
 
-const deck = Array.from({length:count},(_,i)=>
-  folder + String(i+1).padStart(2,'0') + '.png');   // .png → .jpg jeśli trzeba
+/* zbuduj talię plików: ["img/1.png","img/2.png", …] */
+const deck = Array.from({length: total}, (_,i)=> folder+(i+1)+ext);
 
+/* wczytaj historię z localStorage */
 let seen = JSON.parse(localStorage.getItem('seen')||'[]');
-if (seen.length===deck.length) seen=[];             // talia skończona → reset
 
+/* losuje kolejny nieużyty obrazek, resetuje talię gdy się skończy */
 function pick(){
-  const left = deck.filter(x=>!seen.includes(x));
+  if (seen.length === deck.length) seen = [];            // auto-reset
+  const left = deck.filter(x => !seen.includes(x));
+
+  /* awaryjne zabezpieczenie – gdyby left był pusty */
+  if (!left.length){ seen = []; left.push(...deck); }
+
   const pic  = left[Math.floor(Math.random()*left.length)];
-  seen.push(pic); localStorage.setItem('seen',JSON.stringify(seen));
+  seen.push(pic);
+  localStorage.setItem('seen', JSON.stringify(seen));
   document.getElementById('viewer').src = pic;
 }
-pick();                                             // pierwszy obraz
-window.addEventListener('click', pick, {passive:true});
+
+pick();                                     // pokaż pierwszy obraz
+window.addEventListener('click', pick, {passive:true});  // każde kliknięcie = następny
 </script>
