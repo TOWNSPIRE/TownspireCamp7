@@ -2,14 +2,31 @@
 <html lang="pl">
 <head>
   <meta charset="utf-8">
-  <!-- wymusza zawsze pobranie świeżej wersji -->
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <title>Turn-based Random Viewer with Intro & End</title>
+  <title>Losowanie z Back</title>
   <style>
     html, body {
       margin: 0; width: 100%; height: 100%; background: #000;
     }
+    img {
+      position: fixed; inset: 0;
+      width: 100vw; height: 100vh;
+      object-fit: contain; object-position: center;
+      user-select: none; cursor: pointer;
+    }
+    /* Przycisk Back */
+    #back {
+      position: fixed; top: 12px; left: 12px;
+      padding: 6px 10px; background: rgba(255,255,255,0.2);
+      color: #fff; font-family: sans-serif; font-size: 16px;
+      font-weight: bold; border-radius: 4px;
+      user-select: none; cursor: pointer;
+      z-index: 9999;
+    }
+    #back.disabled {
+      opacity: .4; cursor: default;
+    }
+    /* Licznik kliknięć */
     #counter {
       position: fixed; top: 12px; right: 12px;
       padding: 6px 10px; background: rgba(255,255,255,0.2);
@@ -17,64 +34,94 @@
       font-weight: bold; border-radius: 4px;
       z-index: 9999; user-select: none; pointer-events: none;
     }
-    img {
-      position: fixed; inset: 0; width: 100vw; height: 100vh;
-      object-fit: contain; object-position: center; user-select: none;
-    }
   </style>
 </head>
 <body>
+
+  <div id="back" class="disabled">Back</div>
   <div id="counter">Turn: 0</div>
   <img id="viewer" alt="random image">
 
   <script>
     const folder      = 'img/';
-    const totalRandom = 10;    // 1–10
+    const totalTurns  = 10;   // obrazy 1–10
     const ext         = '.jpg';
 
-    let phase = 'init';
-    let seen  = new Set();
+    let phase    = 'init';     // 'init' | 'random' | 'end'
+    let history  = [];         // np. ['0','3','7',...,'end']
 
     const $img     = document.getElementById('viewer');
+    const $back    = document.getElementById('back');
     const $counter = document.getElementById('counter');
+
+    function updateButtons() {
+      // Back aktywny, gdy jest więcej niż jedno wejście w historii
+      if (history.length > 1) $back.classList.remove('disabled');
+      else                  $back.classList.add('disabled');
+    }
 
     function updateCounter() {
       if (phase === 'init')      $counter.textContent = 'Turn: 0';
-      else if (phase === 'random') $counter.textContent = 'Turn: ' + seen.size;
+      else if (phase === 'random') $counter.textContent = 'Turn: ' + history.filter(x => !isNaN(x)).length;
       else                        $counter.textContent = 'End';
     }
 
     function render() {
-      if (phase === 'init') {
-        $img.src = folder + '0' + ext;
-      }
-      else if (phase === 'end') {
-        $img.src = folder + 'end' + ext;
-      }
-      else { // 'random'
-        const rem = [...Array(totalRandom).keys()].map(i=>i+1)
-                        .filter(i=>!seen.has(i));
-        if (!rem.length) {
-          phase = 'end';
-          render();
-          return;
-        }
-        const pick = rem[Math.floor(Math.random()*rem.length)];
-        seen.add(pick);
-        $img.src = folder + pick + ext;
-      }
+      const code = history[history.length - 1];
+      $img.src = folder + code + ext;
+      updateButtons();
       updateCounter();
     }
 
-    function next() {
-      if (phase === 'init')          phase = 'random';
-      else if (phase === 'random' && seen.size >= totalRandom) phase = 'end';
-      else if (phase === 'end')      { phase = 'init'; seen.clear(); }
+    function goInit() {
+      phase = 'init';
+      history = ['0'];
       render();
     }
 
-    window.addEventListener('click', next, {passive:true});
-    render();
+    function goRandom() {
+      phase = 'random';
+      const seen = new Set(history.filter(x=>!isNaN(x)).map(Number));
+      const rem = [];
+      for (let i = 1; i <= totalTurns; i++) {
+        if (!seen.has(i)) rem.push(i);
+      }
+      if (rem.length === 0) {
+        phase = 'end';
+        history.push('end');
+        render();
+        return;
+      }
+      const pick = rem[Math.floor(Math.random()*rem.length)];
+      history.push(String(pick));
+      render();
+    }
+
+    function goEnd() {
+      phase = 'end';
+      history.push('end');
+      render();
+    }
+
+    // Klik w obrazek jako Next
+    $img.addEventListener('click', () => {
+      if (phase === 'init')           goRandom();
+      else if (phase === 'random' && history.filter(x=>!isNaN(x)).length >= totalTurns) goEnd();
+      else if (phase === 'random')    goRandom();
+      else if (phase === 'end')       goInit();
+    });
+
+    // Klik Back
+    $back.addEventListener('click', () => {
+      if (history.length <= 1) return;
+      history.pop();
+      if (history[history.length -1] === '0') phase = 'init';
+      else phase = (phase === 'end') ? 'random' : phase;
+      render();
+    });
+
+    // Start
+    goInit();
   </script>
 </body>
 </html>
