@@ -3,8 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <title>Losowy obraz – 0 → 1-24 → end</title>
-
+  <title>Turn-based Random Viewer with Intro & End</title>
   <style>
     html, body {
       margin: 0;
@@ -12,7 +11,6 @@
       height: 100%;
       background: #000;
     }
-    /* Wyraźny, duży licznik w rogu */
     #counter {
       position: fixed;
       top: 12px;
@@ -28,89 +26,80 @@
       user-select: none;
       pointer-events: none;
     }
-    /* Obrazek na pełny ekran */
     img {
       position: fixed;
       inset: 0;
       width: 100vw;
       height: 100vh;
-      object-fit: contain;   /* zmień na cover, by przycinać */
+      object-fit: contain;
       object-position: center;
       user-select: none;
     }
   </style>
 </head>
 <body>
-  <!-- Licznik z domyślnym tekstem -->
-  <div id="counter">Clicks: 0</div>
+  <div id="counter">Turn: 0</div>
   <img id="viewer" alt="random image">
 
   <script>
-    /* ── konfiguracja ───────────────────────────── */
     const folder      = 'img/';   // katalog z plikami
-    const totalRandom = 24;       // pula 1-24.jpg
-    const maxPerRound = 10;       // ile plików 1-24 przed end.jpg
+    const totalRandom = 10;       // pula 1–10.jpg
     const ext         = '.jpg';   // używamy .jpg
-    /* ───────────────────────────────────────────── */
 
-    let phase = 'init';           // 'init' | 'random' | 'end'
-    let seenRandom = new Set();   // już wylosowane numery (1-24)
-    let clickCount = 0;           // zlicza kliknięcia od początku
-
+    let phase     = 'init';       // 'init' | 'random' | 'end'
+    let seen      = new Set();    // numery już wyświetlone (1–10)
     const $img     = document.getElementById('viewer');
     const $counter = document.getElementById('counter');
 
     function updateCounter() {
-      $counter.textContent = 'Clicks: ' + clickCount;
-    }
-
-    /* renderuje obraz zależnie od fazy */
-    function render() {
-      try {
-        if (phase === 'init') {
-          $img.src = folder + '0' + ext;
-        }
-        else if (phase === 'end') {
-          $img.src = folder + 'end' + ext;
-        }
-        else {  // phase === 'random'
-          if (seenRandom.size >= maxPerRound) {
-            phase = 'end';
-            render();
-            return;
-          }
-          const remaining = [];
-          for (let i = 1; i <= totalRandom; i++) {
-            if (!seenRandom.has(i)) remaining.push(i);
-          }
-          const pick = remaining[Math.floor(Math.random() * remaining.length)];
-          seenRandom.add(pick);
-          $img.src = folder + pick + ext;
-        }
-      } catch(e) {
-        console.error('Render error:', e);
+      if (phase === 'init') {
+        $counter.textContent = 'Turn: 0';
+      } else if (phase === 'random') {
+        $counter.textContent = 'Turn: ' + seen.size;
+      } else { // phase === 'end'
+        $counter.textContent = 'End';
       }
     }
 
-    /* obsługa kliknięcia – zmiana fazy i licznika */
+    function render() {
+      if (phase === 'init') {
+        $img.src = folder + '0' + ext;
+      }
+      else if (phase === 'end') {
+        $img.src = folder + 'end' + ext;
+      }
+      else { // phase === 'random'
+        const remaining = [];
+        for (let i = 1; i <= totalRandom; i++) {
+          if (!seen.has(i)) remaining.push(i);
+        }
+        if (remaining.length === 0) {
+          phase = 'end';
+          render();
+          return;
+        }
+        const pick = remaining[Math.floor(Math.random() * remaining.length)];
+        seen.add(pick);
+        $img.src = folder + pick + ext;
+      }
+      updateCounter();
+    }
+
     function next() {
-      clickCount++;
       if (phase === 'init') {
         phase = 'random';
       }
+      else if (phase === 'random' && seen.size >= totalRandom) {
+        phase = 'end';
+      }
       else if (phase === 'end') {
         phase = 'init';
-        seenRandom.clear();
-        clickCount = 0;
+        seen.clear();
       }
-      updateCounter();
       render();
     }
 
     window.addEventListener('click', next, { passive: true });
-
-    // start
-    updateCounter();
     render();
   </script>
 </body>
