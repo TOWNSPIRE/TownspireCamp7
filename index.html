@@ -1,66 +1,80 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pl">
 <head>
-<meta charset="utf-8">
-<!-- sprawia, że strona wypełnia cały ekran urządzenia mobilnego -->
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Random image viewer</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Losowy obraz – 0 → 1-24 → end</title>
 
-<style>
-  /* cała strona zajmuje 100 % szer. i wys. ekranu, czarne tło */
-  html,body{
-    margin:0;
-    width:100%;
-    height:100%;
-    background:#000;
-  }
-  /* pojedynczy obraz – od brzegu do brzegu */
-  img{
-    position:fixed;          /* przyklejony do viewportu */
-    inset:0;                 /* wszystkie brzegi = 0 */
-    width:100vw;             /* 100 % szerokości okna */
-    height:100vh;            /* 100 % wysokości okna */
-    object-fit:contain;      /* ► całe zdjęcie; zmień na cover, by przycinać */
-    object-position:center;
-    user-select:none;        /* brak zaznaczania/long-press menu */
-  }
-</style>
+  <style>
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      background: #000;
+    }
+    img {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      object-fit: contain;
+      object-position: center;
+      user-select: none;
+    }
+  </style>
 </head>
 
 <body>
   <img id="viewer" alt="random image">
 
-<script>
-/* ── konfiguracja ────────────────────────────────────────────── */
-const folder = 'img/';   // katalog z obrazkami (obok index.html)
-const total  = 5;        // 1.png … 5.png
-const ext    = '.jpg';   // zmień na '.jpg', jeśli używasz JPG
-/* ────────────────────────────────────────────────────────────── */
+  <script>
+    /* ── konfiguracja ───────────────────────────── */
+    const folder       = 'img/';   // katalog z plikami
+    const totalRandom  = 24;       // pula 1-24.jpg
+    const maxPerRound  = 10;       // ile plików 1-24 pokazać przed end
+    const ext          = '.jpg';   // używamy JPG
+    /* ───────────────────────────────────────────── */
 
-/* budujemy tablicę: ['img/1.png', 'img/2.png', …] */
-const deck = Array.from({length: total}, (_, i) =>
-  folder + (i + 1) + ext);
+    let phase = 'init';            // 'init' | 'random' | 'end'
+    let seenRandom = new Set();    // numery już wylosowane (1-24)
 
-/* historia obejrzanych obrazów w pamięci przeglądarki */
-let seen = JSON.parse(localStorage.getItem('seen') || '[]');
+    const $img = document.getElementById('viewer');
 
-/* losuje kolejny nieobejrzany obraz; resetuje talię po wyczerpaniu */
-function pick() {
-  if (seen.length === deck.length) seen = [];          // automatyczny reset
-  const left = deck.filter(x => !seen.includes(x));
+    /* renderuje odpowiedni obraz w zależności od fazy */
+    function render() {
+      if (phase === 'init') {
+        $img.src = folder + '0' + ext;
+      } else if (phase === 'end') {
+        $img.src = folder + 'end' + ext;
+      } else {  // phase === 'random'
+        if (seenRandom.size >= maxPerRound) {
+          phase = 'end';
+          render();
+          return;
+        }
+        const remaining = [];
+        for (let i = 1; i <= totalRandom; i++) {
+          if (!seenRandom.has(i)) remaining.push(i);
+        }
+        const pick = remaining[Math.floor(Math.random() * remaining.length)];
+        seenRandom.add(pick);
+        $img.src = folder + pick + ext;
+      }
+    }
 
-  /* awaryjne zabezpieczenie (gdyby left był pusty) */
-  if (!left.length) { seen = []; left.push(...deck); }
+    /* zmienia fazę po kliknięciu i renderuje kolejny obraz */
+    function next() {
+      if (phase === 'init') {
+        phase = 'random';
+      } else if (phase === 'end') {
+        phase = 'init';
+        seenRandom.clear();
+      }
+      render();
+    }
 
-  const pic = left[Math.floor(Math.random() * left.length)];
-  seen.push(pic);
-  localStorage.setItem('seen', JSON.stringify(seen));
-  document.getElementById('viewer').src = pic;
-}
-
-pick();                                  // pokaż pierwszy obraz
-/* każde tapnięcie / kliknięcie ekranu → następny obraz */
-window.addEventListener('click', pick, {passive: true});
-</script>
+    window.addEventListener('click', next, { passive: true });
+    render();  // start od 0.jpg
+  </script>
 </body>
 </html>
