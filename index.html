@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>Losowy obraz – 0 → 1-24 → end</title>
+
   <style>
     html, body {
       margin: 0;
@@ -11,19 +12,21 @@
       height: 100%;
       background: #000;
     }
-    /* Licznik kliknięć */
+    /* Wyraźny, duży licznik w rogu */
     #counter {
       position: fixed;
-      top: 8px;
-      left: 8px;
+      top: 12px;
+      right: 12px;
+      padding: 6px 10px;
+      background: rgba(255,255,255,0.2);
       color: #fff;
       font-family: sans-serif;
-      font-size: 14px;
-      background: rgba(0,0,0,0.5);
-      padding: 4px 8px;
+      font-size: 18px;
+      font-weight: bold;
       border-radius: 4px;
-      z-index: 10;
+      z-index: 9999;
       user-select: none;
+      pointer-events: none;
     }
     /* Obrazek na pełny ekran */
     img {
@@ -38,8 +41,8 @@
   </style>
 </head>
 <body>
-  <!-- widoczny licznik kliknięć -->
-  <div id="counter">0</div>
+  <!-- Licznik z domyślnym tekstem -->
+  <div id="counter">Clicks: 0</div>
   <img id="viewer" alt="random image">
 
   <script>
@@ -50,42 +53,46 @@
     const ext         = '.jpg';   // używamy .jpg
     /* ───────────────────────────────────────────── */
 
-    let phase = 'init';            // 'init' | 'random' | 'end'
-    let seenRandom = new Set();    // już wylosowane numery (1-24)
-    let clickCount = 0;            // zlicza kliknięcia od początku
+    let phase = 'init';           // 'init' | 'random' | 'end'
+    let seenRandom = new Set();   // już wylosowane numery (1-24)
+    let clickCount = 0;           // zlicza kliknięcia od początku
 
-    const $img      = document.getElementById('viewer');
-    const $counter  = document.getElementById('counter');
+    const $img     = document.getElementById('viewer');
+    const $counter = document.getElementById('counter');
 
     function updateCounter() {
-      $counter.textContent = clickCount;
+      $counter.textContent = 'Clicks: ' + clickCount;
     }
 
     /* renderuje obraz zależnie od fazy */
     function render() {
-      if (phase === 'init') {
-        $img.src = folder + '0' + ext;
-      }
-      else if (phase === 'end') {
-        $img.src = folder + 'end' + ext;
-      }
-      else {  // phase === 'random'
-        if (seenRandom.size >= maxPerRound) {
-          phase = 'end';
-          render();
-          return;
+      try {
+        if (phase === 'init') {
+          $img.src = folder + '0' + ext;
         }
-        const remaining = [];
-        for (let i = 1; i <= totalRandom; i++) {
-          if (!seenRandom.has(i)) remaining.push(i);
+        else if (phase === 'end') {
+          $img.src = folder + 'end' + ext;
         }
-        const pick = remaining[Math.floor(Math.random() * remaining.length)];
-        seenRandom.add(pick);
-        $img.src = folder + pick + ext;
+        else {  // phase === 'random'
+          if (seenRandom.size >= maxPerRound) {
+            phase = 'end';
+            render();
+            return;
+          }
+          const remaining = [];
+          for (let i = 1; i <= totalRandom; i++) {
+            if (!seenRandom.has(i)) remaining.push(i);
+          }
+          const pick = remaining[Math.floor(Math.random() * remaining.length)];
+          seenRandom.add(pick);
+          $img.src = folder + pick + ext;
+        }
+      } catch(e) {
+        console.error('Render error:', e);
       }
     }
 
-    /* obsługa kliknięcia */
+    /* obsługa kliknięcia – zmiana fazy i licznika */
     function next() {
       clickCount++;
       if (phase === 'init') {
