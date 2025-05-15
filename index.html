@@ -14,25 +14,22 @@
       object-fit: contain; object-position: center;
       user-select: none; cursor: pointer;
     }
-    /* Przycisk Back */
     #back {
       position: fixed; top: 12px; left: 12px;
       padding: 6px 10px; background: rgba(255,255,255,0.2);
-      color: #fff; font-family: sans-serif; font-size: 16px;
-      font-weight: bold; border-radius: 4px;
+      color: #fff; font: bold 16px sans-serif;
+      border-radius: 4px; z-index: 9999;
       user-select: none; cursor: pointer;
-      z-index: 9999;
     }
     #back.disabled {
       opacity: .4; cursor: default;
     }
-    /* Licznik kliknięć */
     #counter {
       position: fixed; top: 12px; right: 12px;
       padding: 6px 10px; background: rgba(255,255,255,0.2);
-      color: #fff; font-family: sans-serif; font-size: 18px;
-      font-weight: bold; border-radius: 4px;
-      z-index: 9999; user-select: none; pointer-events: none;
+      color: #fff; font: bold 18px sans-serif;
+      border-radius: 4px; z-index: 9999;
+      user-select: none; pointer-events: none;
     }
   </style>
 </head>
@@ -43,27 +40,31 @@
   <img id="viewer" alt="random image">
 
   <script>
-    const folder      = 'img/';
-    const totalTurns  = 10;   // obrazy 1–10
-    const ext         = '.jpg';
+    const folder     = 'img/';
+    const totalTurns = 10;  // pula 1–10
+    const ext        = '.jpg';
 
-    let phase    = 'init';     // 'init' | 'random' | 'end'
-    let history  = [];         // np. ['0','3','7',...,'end']
+    let phase   = 'init';   // 'init' | 'random' | 'end'
+    let history = [];       // np. ['0','3','7',...,'end']
 
     const $img     = document.getElementById('viewer');
     const $back    = document.getElementById('back');
     const $counter = document.getElementById('counter');
 
     function updateButtons() {
-      // Back aktywny, gdy jest więcej niż jedno wejście w historii
-      if (history.length > 1) $back.classList.remove('disabled');
-      else                  $back.classList.add('disabled');
+      $back.classList.toggle('disabled', history.length <= 1);
     }
 
     function updateCounter() {
-      if (phase === 'init')      $counter.textContent = 'Turn: 0';
-      else if (phase === 'random') $counter.textContent = 'Turn: ' + history.filter(x => !isNaN(x)).length;
-      else                        $counter.textContent = 'End';
+      if (phase === 'init') {
+        $counter.textContent = 'Turn: 0';
+      } else if (phase === 'random') {
+        // liczymy tylko te wpisy history > 0 (1–10)
+        const turns = history.filter(x => !isNaN(x) && Number(x) > 0).length;
+        $counter.textContent = 'Turn: ' + turns;
+      } else { // end
+        $counter.textContent = 'End';
+      }
     }
 
     function render() {
@@ -74,14 +75,18 @@
     }
 
     function goInit() {
-      phase = 'init';
+      phase   = 'init';
       history = ['0'];
       render();
     }
 
     function goRandom() {
       phase = 'random';
-      const seen = new Set(history.filter(x=>!isNaN(x)).map(Number));
+      // zbieramy, co już pokazaliśmy (1–10)
+      const seen = new Set(history
+        .filter(x => !isNaN(x) && Number(x) > 0)
+        .map(Number));
+      // lista nieużytych
       const rem = [];
       for (let i = 1; i <= totalTurns; i++) {
         if (!seen.has(i)) rem.push(i);
@@ -92,7 +97,7 @@
         render();
         return;
       }
-      const pick = rem[Math.floor(Math.random()*rem.length)];
+      const pick = rem[Math.floor(Math.random() * rem.length)];
       history.push(String(pick));
       render();
     }
@@ -103,24 +108,39 @@
       render();
     }
 
-    // Klik w obrazek jako Next
+    // klik w obrazek = next
     $img.addEventListener('click', () => {
-      if (phase === 'init')           goRandom();
-      else if (phase === 'random' && history.filter(x=>!isNaN(x)).length >= totalTurns) goEnd();
-      else if (phase === 'random')    goRandom();
-      else if (phase === 'end')       goInit();
+      if (phase === 'init') {
+        goRandom();
+      } else if (phase === 'random') {
+        // jeśli już było 10 losowań
+        const done = history.filter(x => !isNaN(x) && Number(x) > 0).length;
+        if (done >= totalTurns) goEnd();
+        else                   goRandom();
+      } else { // end
+        goInit();
+      }
     });
 
-    // Klik Back
+    // klik Back
     $back.addEventListener('click', () => {
       if (history.length <= 1) return;
       history.pop();
-      if (history[history.length -1] === '0') phase = 'init';
-      else phase = (phase === 'end') ? 'random' : phase;
+      // jeśli cofamy z end → faza random
+      if (history[history.length - 1] === 'end') {
+        history.pop();
+        phase = 'random';
+      }
+      // jeśli cofamy z random → phase random or init
+      else if (history[history.length - 1] === '0') {
+        phase = 'init';
+      } else {
+        phase = 'random';
+      }
       render();
     });
 
-    // Start
+    // start
     goInit();
   </script>
 </body>
