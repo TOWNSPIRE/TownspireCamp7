@@ -1,40 +1,66 @@
-<!DOCTYPE html><meta charset="utf-8">
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!-- sprawia, że strona wypełnia cały ekran urządzenia mobilnego -->
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Random image viewer</title>
 
 <style>
-  html,body{margin:0;height:100%;background:#000;display:flex}
-  img{max-width:100%;max-height:100%;margin:auto;user-select:none}
+  /* cała strona zajmuje 100 % szer. i wys. ekranu, czarne tło */
+  html,body{
+    margin:0;
+    width:100%;
+    height:100%;
+    background:#000;
+  }
+  /* pojedynczy obraz – od brzegu do brzegu */
+  img{
+    position:fixed;          /* przyklejony do viewportu */
+    inset:0;                 /* wszystkie brzegi = 0 */
+    width:100vw;             /* 100 % szerokości okna */
+    height:100vh;            /* 100 % wysokości okna */
+    object-fit:contain;      /* ► całe zdjęcie; zmień na cover, by przycinać */
+    object-position:center;
+    user-select:none;        /* brak zaznaczania/long-press menu */
+  }
 </style>
+</head>
 
-<img id="viewer">
+<body>
+  <img id="viewer" alt="random image">
 
 <script>
-/* --- konfiguracja --------------------------------------------- */
-const folder = 'img/';      // katalog z obrazkami (w tym samym repo, co index.html)
-const total  = 5;           // liczba plików: 1.png … 5.png
-const ext    = '.png';      // rozszerzenie (.png lub .jpg)
-/* --------------------------------------------------------------- */
+/* ── konfiguracja ────────────────────────────────────────────── */
+const folder = 'img/';   // katalog z obrazkami (obok index.html)
+const total  = 5;        // 1.png … 5.png
+const ext    = '.png';   // zmień na '.jpg', jeśli używasz JPG
+/* ────────────────────────────────────────────────────────────── */
 
-/* zbuduj talię plików: ["img/1.png","img/2.png", …] */
-const deck = Array.from({length: total}, (_,i)=> folder+(i+1)+ext);
+/* budujemy tablicę: ['img/1.png', 'img/2.png', …] */
+const deck = Array.from({length: total}, (_, i) =>
+  folder + (i + 1) + ext);
 
-/* wczytaj historię z localStorage */
-let seen = JSON.parse(localStorage.getItem('seen')||'[]');
+/* historia obejrzanych obrazów w pamięci przeglądarki */
+let seen = JSON.parse(localStorage.getItem('seen') || '[]');
 
-/* losuje kolejny nieużyty obrazek, resetuje talię gdy się skończy */
-function pick(){
-  if (seen.length === deck.length) seen = [];            // auto-reset
+/* losuje kolejny nieobejrzany obraz; resetuje talię po wyczerpaniu */
+function pick() {
+  if (seen.length === deck.length) seen = [];          // automatyczny reset
   const left = deck.filter(x => !seen.includes(x));
 
-  /* awaryjne zabezpieczenie – gdyby left był pusty */
-  if (!left.length){ seen = []; left.push(...deck); }
+  /* awaryjne zabezpieczenie (gdyby left był pusty) */
+  if (!left.length) { seen = []; left.push(...deck); }
 
-  const pic  = left[Math.floor(Math.random()*left.length)];
+  const pic = left[Math.floor(Math.random() * left.length)];
   seen.push(pic);
   localStorage.setItem('seen', JSON.stringify(seen));
   document.getElementById('viewer').src = pic;
 }
 
-pick();                                     // pokaż pierwszy obraz
-window.addEventListener('click', pick, {passive:true});  // każde kliknięcie = następny
+pick();                                  // pokaż pierwszy obraz
+/* każde tapnięcie / kliknięcie ekranu → następny obraz */
+window.addEventListener('click', pick, {passive: true});
 </script>
+</body>
+</html>
