@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <title>Losowanie z Back (stała pula 10)</title>
+  <title>Losowanie z Back – stała kolejność</title>
   <style>
     html,body{margin:0;width:100%;height:100%;background:#000}
     img{position:fixed;inset:0;width:100vw;height:100vh;object-fit:contain;object-position:center;
@@ -21,52 +21,63 @@
   <img id="viewer" alt="viewer">
 
 <script>
-const folder='img/', ext='.jpg', total=10;
+const folder='img/', ext='.jpg', TOTAL=10;
 const $img=document.getElementById('viewer');
 const $back=document.getElementById('back');
 const $cnt=document.getElementById('counter');
 
-let sequence=[], idx=-1;     // idx: -1=start, 0-9 obrazki, 10=end
+let sequence=[], idx=-1, roundFinished=false;   // idx: -1=start, 0..9 obrazki, 10=end
 
-function shuffle(arr){
-  for(let i=arr.length-1;i>0;i--){ const j=Math.floor(Math.random()* (i+1)); [arr[i],arr[j]]=[arr[j],arr[i]];}
-  return arr;
-}
-function newRound(){
-  sequence=shuffle([...Array(total).keys()].map(i=>i+1)); // [1..10] random
-  idx=-1;
-  render();
-}
+/*––– utils –––*/
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+function makeSequence(){ sequence = shuffle([...Array(TOTAL).keys()].map(i=>i+1)); }
+
 function render(){
   let code;
-  if(idx===-1)       code='0';          // startowy obraz
-  else if(idx===total) code='end';      // końcowy
+  if(idx===-1)        code='0';
+  else if(idx===TOTAL)code='end';
   else                code=sequence[idx];
+
   $img.src=`${folder}${code}${ext}`;
 
-  $cnt.textContent= idx<0 ? 'Turn: 0' : idx<total ? `Turn: ${idx+1}` : 'End';
+  if(idx<0)           $cnt.textContent='Turn: 0';
+  else if(idx<TOTAL)  $cnt.textContent=`Turn: ${idx+1}`;
+  else                $cnt.textContent='End';
+
   $back.classList.toggle('disabled',idx<=-1);
 }
+
+/*––– nawigacja –––*/
 function next(){
-  if(idx<total) idx++;
-  if(idx>total) idx=total;
+  if(idx===TOTAL){            // z 'end' → obraz 0
+    idx=-1;
+    render();
+    roundFinished=true;       // oznacz, że runda zakończona
+    return;
+  }
+  if(roundFinished && idx===-1){ // nowy shuffle dopiero z ekranu 0
+    makeSequence();
+    roundFinished=false;
+  }
+  if(idx<TOTAL) idx++;
   render();
 }
+
 function prev(){
   if(idx<=-1) return;
+  if(idx===TOTAL){ roundFinished=false; } // wycofanie z 'end'
   idx--;
   render();
 }
 
-/* --- zdarzenia --- */
-$img.addEventListener('click',()=>{
-  if(idx===total) newRound();
-  else next();
-});
-$back.addEventListener('click',()=>{ if(!$back.classList.contains('disabled')) prev(); });
+/*––– zdarzenia –––*/
+$img.addEventListener('click', next);
+$back.addEventListener('click', ()=>{ if(!$back.classList.contains('disabled')) prev(); });
 
 /* start */
-newRound();
+makeSequence();
+render();
 </script>
 </body>
 </html>
