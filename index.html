@@ -1,83 +1,101 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <title>Losowanie z Back – stała kolejność</title>
-  <style>
-    html,body{margin:0;width:100%;height:100%;background:#000}
-    img{position:fixed;inset:0;width:100vw;height:100vh;object-fit:contain;object-position:center;
-        user-select:none;cursor:pointer}
-    #back{position:fixed;top:12px;left:12px;padding:6px 10px;background:rgba(255,255,255,.2);
-          color:#fff;font:bold 16px sans-serif;border-radius:4px;z-index:9;user-select:none;cursor:pointer}
-    #back.disabled{opacity:.4;cursor:default}
-    #counter{position:fixed;top:12px;right:12px;padding:6px 10px;background:rgba(255,255,255,.2);
-             color:#fff;font:bold 18px sans-serif;border-radius:4px;z-index:9;pointer-events:none}
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Losowanie 0 → kość → 10 obrazków → end</title>
+<style>
+  html,body{margin:0;width:100%;height:100%;background:#000}
+  img{position:fixed;inset:0;width:100vw;height:100vh;object-fit:contain;
+      object-position:center;user-select:none;cursor:pointer}
+  #back{position:fixed;top:12px;left:12px;padding:6px 10px;
+        background:rgba(255,255,255,.2);color:#fff;font:bold 16px sans-serif;
+        border-radius:4px;z-index:9;user-select:none;cursor:pointer}
+  #back.disabled{opacity:.4;cursor:default}
+  #counter{position:fixed;top:12px;right:12px;padding:6px 10px;
+           background:rgba(255,255,255,.2);color:#fff;font:bold 18px sans-serif;
+           border-radius:4px;z-index:9;pointer-events:none}
+</style>
 </head>
 <body>
-  <div id="back" class="disabled">Back</div>
-  <div id="counter">Turn: 0</div>
-  <img id="viewer" alt="viewer">
+
+<div id="back" class="disabled">Back</div>
+<div id="counter">Turn: 0</div>
+<img id="viewer" alt="viewer">
 
 <script>
-const folder='img/', ext='.jpg', TOTAL=10;
-const $img=document.getElementById('viewer');
-const $back=document.getElementById('back');
-const $cnt=document.getElementById('counter');
+/* ── konfiguracja ───────────────────────────── */
+const IMG_FOLDER   = 'img/';      // intro, pula 1-16, end
+const DICE_FOLDER  = 'Kosci/';    // losowa kość
+const EXT          = '.jpg';
 
-let sequence=[], idx=-1, roundFinished=false;   // idx: -1=start, 0..9 obrazki, 10=end
+const DICE_MAX     = 15;           // ile plików w Kosci/
+const POOL_TOTAL   = 16;          // pula 1-16
+const PICKS_PER_RUN= 10;          // losujemy 10 unikalnych
+/* ───────────────────────────────────────────── */
 
-/*––– utils –––*/
-function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+const $img = document.getElementById('viewer');
+const $back= document.getElementById('back');
+const $cnt = document.getElementById('counter');
 
-function makeSequence(){ sequence = shuffle([...Array(TOTAL).keys()].map(i=>i+1)); }
+let state;        // { dice:'3', pool:[7,2,14,...], pos } pos: -1=intro,0=dice,1-10=pula,11=end
+initRound();
 
-function render(){
-  let code;
-  if(idx===-1)        code='0';
-  else if(idx===TOTAL)code='end';
-  else                code=sequence[idx];
-
-  $img.src=`${folder}${code}${ext}`;
-
-  if(idx<0)           $cnt.textContent='Turn: 0';
-  else if(idx<TOTAL)  $cnt.textContent=`Turn: ${idx+1}`;
-  else                $cnt.textContent='End';
-
-  $back.classList.toggle('disabled',idx<=-1);
+/* ---------- pomocnicze ---------- */
+function shuffle(arr){
+  for(let i=arr.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [arr[i],arr[j]]=[arr[j],arr[i]];
+  }
+  return arr;
 }
-
-/*––– nawigacja –––*/
+function initRound(){
+  const dice = String( Math.floor(Math.random()*DICE_MAX)+1 );         // '1'..'6'
+  const pool = shuffle([...Array(POOL_TOTAL).keys()].map(i=>i+1))
+               .slice(0,PICKS_PER_RUN).map(String);                   // ['7','2',...]
+  state = { dice, pool, pos:-1 };                                     // start od 0.jpg
+  render();
+}
+function currentCode(){
+  if(state.pos===-1)               return '0';                     // intro
+  if(state.pos===0)                return state.dice;              // kość
+  if(state.pos<=PICKS_PER_RUN)     return state.pool[state.pos-1]; // pula 1-10
+  return 'end';                                                   // koniec
+}
+function updateCounter(){
+  if(state.pos<=0)                       $cnt.textContent='Turn: 0';
+  else if(state.pos<=PICKS_PER_RUN)      $cnt.textContent='Turn: '+state.pos;
+  else                                    $cnt.textContent='End';
+}
+function updateBack(){
+  $back.classList.toggle('disabled',state.pos<=-1);
+}
+function render(){
+  const code = currentCode();
+  const folder = (state.pos===0) ? DICE_FOLDER : IMG_FOLDER;
+  $img.src = `${folder}${code}${EXT}`;
+  updateCounter();
+  updateBack();
+}
+/* ---------- nawigacja ---------- */
 function next(){
-  if(idx===TOTAL){            // z 'end' → obraz 0
-    idx=-1;
-    render();
-    roundFinished=true;       // oznacz, że runda zakończona
+  if(state.pos===PICKS_PER_RUN+1){      // kliknięto end.jpg
+    initRound();
     return;
   }
-  if(roundFinished && idx===-1){ // nowy shuffle dopiero z ekranu 0
-    makeSequence();
-    roundFinished=false;
-  }
-  if(idx<TOTAL) idx++;
+  state.pos++;
   render();
 }
-
 function prev(){
-  if(idx<=-1) return;
-  if(idx===TOTAL){ roundFinished=false; } // wycofanie z 'end'
-  idx--;
+  if(state.pos<=-1) return;
+  state.pos--;
   render();
 }
-
-/*––– zdarzenia –––*/
+/* ---------- zdarzenia ---------- */
 $img.addEventListener('click', next);
-$back.addEventListener('click', ()=>{ if(!$back.classList.contains('disabled')) prev(); });
-
-/* start */
-makeSequence();
-render();
+$back.addEventListener('click', ()=>{
+  if(!$back.classList.contains('disabled')) prev();
+});
 </script>
 </body>
 </html>
