@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <title>0 → 1 → … → 7</title>
+  <title>0 → 1 → … → 9</title>
   <style>
     html,body{margin:0;width:100%;height:100%;background:#000}
     img{
@@ -30,17 +30,17 @@
 
 <script>
 /* ── konfiguracja ───────────────────────────── */
-const IMG_FOLDER = 'img/';   // gdzie leżą pliki .jpg
+const IMG_FOLDER = 'img/';   // folder z plikami
 const EXT        = '.jpg';
-const START_ID   = 0;        // zaczynamy od 0.jpg
-const END_ID     = 7;        // kończymy na 7.jpg
+const START_ID   = 0;        // 0.jpg
+const END_ID     = 9;        // 9.jpg
 /* ───────────────────────────────────────────── */
 
 const $img  = document.getElementById('viewer');
 const $back = document.getElementById('back');
 const $cnt  = document.getElementById('counter');
 
-let pos = START_ID;          // aktualny numer obrazka (0..7)
+let pos = START_ID;          // aktualny numer obrazka (0..9)
 
 function render(){
   $img.src = IMG_FOLDER + pos + EXT;
@@ -50,7 +50,7 @@ function render(){
 
 function next(){
   if (pos < END_ID) pos++;
-  else              pos = START_ID;  // po 7 wracamy do 0
+  else              pos = START_ID;  // po 9 wracamy do 0
   render();
 }
 
